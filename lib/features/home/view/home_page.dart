@@ -47,7 +47,12 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Show notifications
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Notifications feature coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
             },
             tooltip: 'Notifications',
           ),

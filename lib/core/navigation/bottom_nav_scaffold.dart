@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../features/home/view/home_page.dart';
 import '../../features/transactions/view/transactions_page.dart';
+import '../../features/settings/view/settings_page.dart';
+import '../../features/summary/view/summary_page.dart';
 
 /// Bottom Navigation Scaffold
 /// Main app structure with 4 persistent tabs
@@ -18,8 +20,8 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
   final List<Widget> _pages = [
     const HomePage(),
     const TransactionsPage(),
-    const _SummaryPagePlaceholder(), // Will implement next
-    const _SettingsPagePlaceholder(), // Will implement next
+    const SummaryPage(),
+    const SettingsPage(),
   ];
 
   @override
@@ -56,31 +58,6 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
           ),
         ],
       ),
-    );
-  }
-}
-
-// Temporary placeholders
-class _SummaryPagePlaceholder extends StatelessWidget {
-  const _SummaryPagePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Summary')),
-      body: const Center(child: Text('Summary Screen Coming Soon')),
-    );
-  }
-}
-
-class _SettingsPagePlaceholder extends StatelessWidget {
-  const _SettingsPagePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: const Center(child: Text('Settings Screen Coming Soon')),
     );
   }
 }

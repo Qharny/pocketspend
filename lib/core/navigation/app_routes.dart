@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'route_transitions.dart';
 import '../../features/transactions/view/add_transaction_page.dart';
+import '../../features/summary/view/summary_page.dart';
+import '../../features/settings/view/settings_page.dart';
+import '../../core/navigation/bottom_nav_scaffold.dart';
 
 /// AppRoutes defines all route names and navigation methods for the app.
 /// This centralizes routing logic and provides type-safe navigation.
@@ -149,9 +152,8 @@ class AppRoutes {
     // Handle route generation based on route name
     switch (routeName) {
       case home:
-        // TODO: Replace with actual TransactionsPage when ready
         return RouteTransitions.none(
-          page: const Placeholder(), // Temporary placeholder
+          page: const BottomNavScaffold(),
           settings: settings,
         );
 
@@ -162,30 +164,28 @@ class AppRoutes {
         );
 
       case summary:
-        // TODO: Replace with actual SummaryPage when ready
         return RouteTransitions.slideRight(
-          page: const Placeholder(), // Temporary placeholder
+          page: const SummaryPage(),
           settings: settings,
         );
 
       case transactionDetails:
-        // TODO: Replace with actual TransactionDetailsPage when ready
+        // Transaction details page not yet implemented
         return RouteTransitions.fade(
-          page: const Placeholder(), // Temporary placeholder
+          page: const Placeholder(),
           settings: settings,
         );
 
       case AppRoutes.settings:
-        // TODO: Replace with actual SettingsPage when ready
         return RouteTransitions.slideRight(
-          page: const Placeholder(), // Temporary placeholder
+          page: const SettingsPage(),
           settings: settings,
         );
 
       case categories:
-        // TODO: Replace with actual CategoriesPage when ready
+        // Categories management page not yet implemented
         return RouteTransitions.slideRight(
-          page: const Placeholder(), // Temporary placeholder
+          page: const Placeholder(),
           settings: settings,
         );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../home/data/mock_data.dart';
 import '../widgets/dismissible_transaction_item.dart';
 import '../widgets/transaction_date_section.dart';
+import 'transaction_details_page.dart';
 
 /// Transactions Page
 /// Shows complete history of all transactions grouped by date
@@ -350,7 +351,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 transaction: transaction,
                                 onDelete: _deleteTransaction,
                                 onTap: () {
-                                  // TODO: Navigate to transaction details
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          TransactionDetailsPage(
+                                            transaction: transaction,
+                                          ),
+                                    ),
+                                  ).then((_) {
+                                    // Refresh list when returning
+                                    setState(() {});
+                                  });
                                 },
                               );
                             }),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../home/data/mock_data.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 /// Settings Page
 /// Light, simple settings - no bloat, offline-first
@@ -133,61 +136,101 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _exportData(BuildContext context) {
-    // Generate CSV
-    final csv = _generateCSV(MockData.transactions);
+  void _exportData(BuildContext context) async {
+    try {
+      // Generate CSV
+      final csv = _generateCSV(MockData.transactions);
 
-    // Show share/download dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export Data'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${MockData.transactions.length} transactions ready to export',
-            ),
-            const SizedBox(height: 16),
-            Text('CSV Preview:', style: Theme.of(context).textTheme.labelSmall),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                csv.split('\n').take(4).join('\n') + '\n...',
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 10),
-                maxLines: 5,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement actual file download/share
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Export feature coming soon! CSV generated.'),
-                  duration: Duration(seconds: 2),
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/pocket_spend_transactions.csv';
+
+      // Write CSV to file
+      final file = File(filePath);
+      await file.writeAsString(csv);
+
+      // Show preview dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Export Data'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${MockData.transactions.length} transactions ready to export',
                 ),
-              );
-            },
-            child: const Text('Download'),
+                const SizedBox(height: 16),
+                Text(
+                  'CSV Preview:',
+                  style: Theme.of(dialogContext).textTheme.labelSmall,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      dialogContext,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${csv.split('\n').take(4).join('\n')}\n...',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                    ),
+                    maxLines: 5,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  Navigator.pop(dialogContext);
+                  // Share the file
+                  await Share.shareXFiles(
+                    [XFile(filePath)],
+                    subject: 'Pocket Spend Transactions Export',
+                    text:
+                        'Your transaction history (${MockData.transactions.length} transactions)',
+                  );
+
+                  // Show success message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transactions exported successfully!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Share CSV'),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
+      }
+    } catch (e) {
+      // Handle errors
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error exporting data: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   String _generateCSV(List<MockTransaction> transactions) {

@@ -88,38 +88,41 @@ class CategorySelector extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Category List
-            ListView.builder(
-              shrinkWrap: true,
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final isSelected = category == selectedCategory;
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final isSelected = category == selectedCategory;
 
-                return ListTile(
-                  leading: Text(
-                    MockData.getCategoryIcon(category),
-                    style: const TextStyle(fontSize: 28),
-                  ),
-                  title: Text(
-                    category,
-                    style: TextStyle(
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
+                  return ListTile(
+                    leading: Text(
+                      MockData.getCategoryIcon(category),
+                      style: const TextStyle(fontSize: 28),
                     ),
-                  ),
-                  trailing: isSelected
-                      ? Icon(
-                          Icons.check_circle,
-                          color: Theme.of(context).colorScheme.primary,
-                        )
-                      : null,
-                  onTap: () {
-                    onCategorySelected(category);
-                    Navigator.pop(context);
-                  },
-                );
-              },
+                    title: Text(
+                      category,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : null,
+                    onTap: () {
+                      onCategorySelected(category);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
