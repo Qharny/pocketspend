@@ -5,7 +5,7 @@ import '../../../core/database/settings_database.dart';
 import '../../../core/database/models/transaction_model.dart';
 import '../widgets/dismissible_transaction_item.dart';
 import '../widgets/transaction_date_section.dart';
-import 'transaction_details_page.dart';
+import '../../../core/navigation/app_routes.dart';
 
 /// Transactions Page
 /// Shows complete history of all transactions grouped by date
@@ -370,18 +370,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                     transaction: transaction,
                                     onDelete: _deleteTransaction,
                                     onTap: () {
-                                      Navigator.push(
+                                      AppRoutes.push(
                                         context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TransactionDetailsPage(
-                                                transaction: transaction,
-                                              ),
-                                        ),
-                                      ).then((_) {
-                                        // Refresh list when returning
-                                        setState(() {});
-                                      });
+                                        AppRoutes.transactionDetails,
+                                        arguments: transaction,
+                                      );
                                     },
                                   );
                                 }),

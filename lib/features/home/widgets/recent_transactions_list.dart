@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/database/models/transaction_model.dart';
 import 'transaction_list_item.dart';
-import '../../transactions/view/transaction_details_page.dart';
+import '../../../core/navigation/app_routes.dart';
 
 /// Recent Transactions List Widget
 /// Shows the most recent transactions with a "See All" option
@@ -58,13 +58,10 @@ class RecentTransactionsList extends StatelessWidget {
               return TransactionListItem(
                 transaction: transactions[index],
                 onTap: () {
-                  Navigator.push(
+                  AppRoutes.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => TransactionDetailsPage(
-                        transaction: transactions[index],
-                      ),
-                    ),
+                    AppRoutes.transactionDetails,
+                    arguments: transactions[index],
                   );
                 },
               );

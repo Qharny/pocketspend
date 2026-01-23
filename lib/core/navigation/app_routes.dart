@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'route_transitions.dart';
 import '../../features/transactions/view/add_transaction_page.dart';
+import '../../features/transactions/view/transactions_page.dart';
+import '../../features/transactions/view/transaction_details_page.dart';
+import '../../core/database/models/transaction_model.dart';
 import '../../features/summary/view/summary_page.dart';
 import '../../features/settings/view/settings_page.dart';
 import '../../core/navigation/bottom_nav_scaffold.dart';
@@ -14,6 +17,9 @@ class AppRoutes {
 
   /// Home/Transactions list page (root)
   static const String home = '/';
+
+  /// Transactions list page
+  static const String transactions = '/transactions';
 
   /// Add transaction form page
   static const String addTransaction = '/add-transaction';
@@ -158,8 +164,15 @@ class AppRoutes {
         );
 
       case addTransaction:
+        final transaction = settings.arguments as TransactionModel?;
         return RouteTransitions.slideBottom(
-          page: const AddTransactionPage(),
+          page: AddTransactionPage(transaction: transaction),
+          settings: settings,
+        );
+
+      case transactions:
+        return RouteTransitions.slideRight(
+          page: const TransactionsPage(),
           settings: settings,
         );
 
@@ -170,9 +183,9 @@ class AppRoutes {
         );
 
       case transactionDetails:
-        // Transaction details page not yet implemented
-        return RouteTransitions.fade(
-          page: const Placeholder(),
+        final transaction = settings.arguments as TransactionModel;
+        return RouteTransitions.slideRight(
+          page: TransactionDetailsPage(transaction: transaction),
           settings: settings,
         );
 

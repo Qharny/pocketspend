@@ -8,7 +8,6 @@ import '../widgets/period_toggle.dart';
 import '../widgets/expense_breakdown_chart.dart';
 import '../widgets/recent_transactions_list.dart';
 import '../../../core/navigation/app_routes.dart';
-import '../../transactions/view/transactions_page.dart';
 
 /// Home Page / Dashboard
 /// The main screen of Pocket Spend showing balance, period toggle, chart, and transactions
@@ -132,15 +131,7 @@ class _HomePageState extends State<HomePage> {
                   RecentTransactionsList(
                     transactions: recentTransactions,
                     onSeeAll: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TransactionsPage(),
-                        ),
-                      ).then((_) {
-                        // Refresh when returning from transactions page
-                        setState(() {});
-                      });
+                      AppRoutes.push(context, AppRoutes.transactions);
                     },
                   ),
                   const SizedBox(height: 80), // Space for FAB

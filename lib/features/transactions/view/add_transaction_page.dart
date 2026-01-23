@@ -10,7 +10,9 @@ import '../widgets/date_picker_button.dart';
 /// Add Transaction Page
 /// Fast, friction-free form for adding income/expense transactions
 class AddTransactionPage extends StatefulWidget {
-  const AddTransactionPage({super.key});
+  final TransactionModel? transaction;
+
+  const AddTransactionPage({super.key, this.transaction});
 
   @override
   State<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -24,6 +26,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   String _selectedCategory = TransactionDatabase.expenseCategories.first;
   DateTime _selectedDate = DateTime.now();
   bool _showNoteField = false;
+
+  bool get _isEditing => widget.transaction != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      final t = widget.transaction!;
+      _amountController.text = t.amount.toString();
+      _noteController.text = t.note ?? '';
+      _isIncome = t.isIncome;
+      _selectedCategory = t.category;
+      _selectedDate = t.date;
+      _showNoteField = t.note != null && t.note!.isNotEmpty;
+    } else {
+      _selectedCategory = TransactionDatabase.expenseCategories.first;
+    }
+  }
 
   @override
   void dispose() {
@@ -42,7 +62,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
     final amount = double.parse(_amountController.text);
     final transaction = TransactionModel(
-      id: TransactionDatabase.generateId(),
+      id: _isEditing
+          ? widget.transaction!.id
+          : TransactionDatabase.generateId(),
       amount: amount,
       category: _selectedCategory,
       note: _noteController.text.isEmpty ? null : _noteController.text,
@@ -50,7 +72,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       isIncome: _isIncome,
     );
 
-    await TransactionDatabase.addTransaction(transaction);
+    if (_isEditing) {
+      await TransactionDatabase.updateTransaction(transaction);
+    } else {
+      await TransactionDatabase.addTransaction(transaction);
+    }
 
     // Show success feedback
     if (mounted) {
@@ -58,9 +84,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isIncome
-                ? 'Income added: $currencySymbol ${amount.toStringAsFixed(2)}'
-                : 'Expense added: $currencySymbol ${amount.toStringAsFixed(2)}',
+            _isEditing
+                ? 'Transaction updated'
+                : (_isIncome
+                      ? 'Income added: $currencySymbol ${amount.toStringAsFixed(2)}'
+                      : 'Expense added: $currencySymbol ${amount.toStringAsFixed(2)}'),
           ),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
@@ -91,7 +119,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           onPressed: () => Navigator.pop(context),
           tooltip: 'Cancel',
         ),
-        title: const Text('Add Transaction'),
+        title: Text(_isEditing ? 'Edit Transaction' : 'Add Transaction'),
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -190,7 +218,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
                 ),
-                child: const Text('Save Transaction'),
+                child: Text(
+                  _isEditing ? 'Update Transaction' : 'Save Transaction',
+                ),
               ),
               const SizedBox(height: 20),
             ],

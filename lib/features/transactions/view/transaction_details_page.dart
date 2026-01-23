@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/database/transaction_database.dart';
 import '../../../core/database/settings_database.dart';
 import '../../../core/database/models/transaction_model.dart';
+import '../../../core/navigation/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 /// Transaction Details Page
 /// Shows detailed information about a single transaction
@@ -14,199 +16,215 @@ class TransactionDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amountColor = transaction.isIncome
-        ? AppColors.getIncomeColor(context)
-        : AppColors.getExpenseColor(context);
-    final currencySymbol = SettingsDatabase.getCurrencySymbol();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _deleteTransaction(context),
-            tooltip: 'Delete',
-          ),
-        ],
+    return ValueListenableBuilder(
+      valueListenable: TransactionDatabase.box.listenable(
+        keys: [transaction.id],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Amount Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: amountColor.withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(
-                    color: amountColor.withOpacity(0.3),
-                    width: 2,
+      builder: (context, box, _) {
+        final currentTransaction = box.get(transaction.id) ?? transaction;
+        final amountColor = currentTransaction.isIncome
+            ? AppColors.getIncomeColor(context)
+            : AppColors.getExpenseColor(context);
+        final currencySymbol = SettingsDatabase.getCurrencySymbol();
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Transaction Details'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () =>
+                    _deleteTransaction(context, currentTransaction),
+                tooltip: 'Delete',
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Amount Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: amountColor.withOpacity(0.1),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: amountColor.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        currentTransaction.isIncome ? 'Income' : 'Expense',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: amountColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${currentTransaction.isIncome ? '+' : '-'}$currencySymbol ${currentTransaction.amount.toStringAsFixed(2)}',
+                        style: Theme.of(context).textTheme.displayMedium
+                            ?.copyWith(
+                              color: amountColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    transaction.isIncome ? 'Income' : 'Expense',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: amountColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${transaction.isIncome ? '+' : '-'}$currencySymbol ${transaction.amount.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      color: amountColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // Details Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Details',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Category
-                  _DetailItem(
-                    icon: Icons.category_outlined,
-                    label: 'Category',
-                    value: transaction.category,
-                    emoji: TransactionDatabase.getCategoryIcon(
-                      transaction.category,
-                    ),
-                  ),
-
-                  const Divider(height: 32),
-
-                  // Date
-                  _DetailItem(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Date',
-                    value: DateFormat(
-                      'EEEE, MMM dd, yyyy',
-                    ).format(transaction.date),
-                  ),
-
-                  const Divider(height: 32),
-
-                  // Time
-                  _DetailItem(
-                    icon: Icons.access_time_outlined,
-                    label: 'Time',
-                    value: DateFormat('h:mm a').format(transaction.date),
-                  ),
-
-                  if (transaction.note != null) ...[
-                    const Divider(height: 32),
-
-                    // Note
-                    _DetailItem(
-                      icon: Icons.note_outlined,
-                      label: 'Note',
-                      value: transaction.note!,
-                      maxLines: null,
-                    ),
-                  ],
-
-                  const Divider(height: 32),
-
-                  // Transaction ID
-                  _DetailItem(
-                    icon: Icons.tag_outlined,
-                    label: 'Transaction ID',
-                    value: transaction.id,
-                    valueStyle: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Edit transaction coming soon!'),
-                          duration: Duration(seconds: 2),
+                // Details Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Details',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit Transaction'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => _deleteTransaction(context),
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    label: Text(
-                      'Delete Transaction',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                      const SizedBox(height: 16),
 
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+                      // Category
+                      _DetailItem(
+                        icon: Icons.category_outlined,
+                        label: 'Category',
+                        value: currentTransaction.category,
+                        emoji: TransactionDatabase.getCategoryIcon(
+                          currentTransaction.category,
+                        ),
+                      ),
+
+                      const Divider(height: 32),
+
+                      // Date
+                      _DetailItem(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Date',
+                        value: DateFormat(
+                          'EEEE, MMM dd, yyyy',
+                        ).format(currentTransaction.date),
+                      ),
+
+                      const Divider(height: 32),
+
+                      // Time
+                      _DetailItem(
+                        icon: Icons.access_time_outlined,
+                        label: 'Time',
+                        value: DateFormat(
+                          'h:mm a',
+                        ).format(currentTransaction.date),
+                      ),
+
+                      if (currentTransaction.note != null) ...[
+                        const Divider(height: 32),
+
+                        // Note
+                        _DetailItem(
+                          icon: Icons.note_outlined,
+                          label: 'Note',
+                          value: currentTransaction.note!,
+                          maxLines: null,
+                        ),
+                      ],
+
+                      const Divider(height: 32),
+
+                      // Transaction ID
+                      _DetailItem(
+                        icon: Icons.tag_outlined,
+                        label: 'Transaction ID',
+                        value: currentTransaction.id,
+                        valueStyle: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          AppRoutes.push(
+                            context,
+                            AppRoutes.addTransaction,
+                            arguments: currentTransaction,
+                          );
+                        },
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit Transaction'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _deleteTransaction(context, currentTransaction),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        label: Text(
+                          'Delete Transaction',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  void _deleteTransaction(BuildContext context) {
+  void _deleteTransaction(
+    BuildContext context,
+    TransactionModel currentTransaction,
+  ) {
     final currencySymbol = SettingsDatabase.getCurrencySymbol();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Transaction'),
         content: Text(
-          'Are you sure you want to delete this ${transaction.isIncome ? 'income' : 'expense'} of $currencySymbol ${transaction.amount.toStringAsFixed(2)}?',
+          'Are you sure you want to delete this ${currentTransaction.isIncome ? 'income' : 'expense'} of $currencySymbol ${currentTransaction.amount.toStringAsFixed(2)}?',
         ),
         actions: [
           TextButton(
@@ -216,7 +234,7 @@ class TransactionDetailsPage extends StatelessWidget {
           FilledButton(
             onPressed: () async {
               final deleted = await TransactionDatabase.deleteTransaction(
-                transaction.id,
+                currentTransaction.id,
               );
               if (deleted) {
                 if (context.mounted) {
@@ -225,12 +243,14 @@ class TransactionDetailsPage extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        '${transaction.isIncome ? 'Income' : 'Expense'} deleted',
+                        '${currentTransaction.isIncome ? 'Income' : 'Expense'} deleted',
                       ),
                       action: SnackBarAction(
                         label: 'Undo',
                         onPressed: () async {
-                          await TransactionDatabase.addTransaction(transaction);
+                          await TransactionDatabase.addTransaction(
+                            currentTransaction,
+                          );
                         },
                       ),
                     ),
