@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'route_transitions.dart';
+import '../../features/transactions/view/add_transaction_page.dart';
 
 /// AppRoutes defines all route names and navigation methods for the app.
 /// This centralizes routing logic and provides type-safe navigation.
@@ -155,9 +156,8 @@ class AppRoutes {
         );
 
       case addTransaction:
-        // TODO: Replace with actual AddTransactionPage when ready
         return RouteTransitions.slideBottom(
-          page: const Placeholder(), // Temporary placeholder
+          page: const AddTransactionPage(),
           settings: settings,
         );
 
