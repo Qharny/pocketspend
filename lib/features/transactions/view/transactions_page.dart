@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../widgets/dismissible_transaction_item.dart';
 import '../widgets/transaction_date_section.dart';
 import 'transaction_details_page.dart';
@@ -19,8 +22,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
   DateTime? _dateTo;
   bool? _typeFilter; // null = all, true = income, false = expense
 
-  List<MockTransaction> get _filteredTransactions {
-    return MockData.filterTransactions(
+  List<TransactionModel> get _filteredTransactions {
+    return TransactionDatabase.filterTransactions(
       category: _selectedCategory,
       dateFrom: _dateFrom,
       dateTo: _dateTo,
@@ -28,8 +31,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
-  Map<String, List<MockTransaction>> get _groupedTransactions {
-    return MockData.groupTransactionsByDate(_filteredTransactions);
+  Map<String, List<TransactionModel>> get _groupedTransactions {
+    return TransactionDatabase.groupTransactionsByDate(_filteredTransactions);
   }
 
   bool get _hasActiveFilters {
@@ -47,26 +50,30 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return count;
   }
 
-  void _deleteTransaction(MockTransaction transaction) {
-    final deleted = MockData.deleteTransaction(transaction.id);
+  void _deleteTransaction(TransactionModel transaction) async {
+    final deleted = await TransactionDatabase.deleteTransaction(transaction.id);
     if (deleted) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${transaction.isIncome ? 'Income' : 'Expense'} deleted: GHS ${transaction.amount.toStringAsFixed(2)}',
+      if (mounted) {
+        setState(() {});
+        final currencySymbol = SettingsDatabase.getCurrencySymbol();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${transaction.isIncome ? 'Income' : 'Expense'} deleted: $currencySymbol ${transaction.amount.toStringAsFixed(2)}',
+            ),
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                await TransactionDatabase.addTransaction(transaction);
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+            ),
           ),
-          duration: const Duration(seconds: 3),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              setState(() {
-                MockData.addTransaction(transaction);
-              });
-            },
-          ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -190,16 +197,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       value: null,
                       child: Text('All Categories'),
                     ),
-                    ...MockData.expenseCategories.map((cat) {
+                    ...TransactionDatabase.expenseCategories.map((cat) {
                       return DropdownMenuItem(
                         value: cat,
-                        child: Text('${MockData.getCategoryIcon(cat)} $cat'),
+                        child: Text(
+                          '${TransactionDatabase.getCategoryIcon(cat)} $cat',
+                        ),
                       );
                     }),
-                    ...MockData.incomeCategories.map((cat) {
+                    ...TransactionDatabase.incomeCategories.map((cat) {
                       return DropdownMenuItem(
                         value: cat,
-                        child: Text('${MockData.getCategoryIcon(cat)} $cat'),
+                        child: Text(
+                          '${TransactionDatabase.getCategoryIcon(cat)} $cat',
+                        ),
                       );
                     }),
                   ],
@@ -237,8 +248,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final groupedTransactions = _groupedTransactions;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transactions'),
@@ -279,100 +288,112 @@ class _TransactionsPageState extends State<TransactionsPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Active filter chips
-          if (_hasActiveFilters)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (_typeFilter != null)
-                          Chip(
-                            label: Text(_typeFilter! ? 'Income' : 'Expense'),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            onDeleted: () {
-                              setState(() {
-                                _typeFilter = null;
-                              });
-                            },
-                          ),
-                        if (_selectedCategory != null)
-                          Chip(
-                            label: Text(_selectedCategory!),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            onDeleted: () {
-                              setState(() {
-                                _selectedCategory = null;
-                              });
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _clearFilters,
-                    child: const Text('Clear All'),
-                  ),
-                ],
-              ),
-            ),
+      body: ValueListenableBuilder<Box<TransactionModel>>(
+        valueListenable: TransactionDatabase.box.listenable(),
+        builder: (context, box, child) {
+          final groupedTransactions = _groupedTransactions;
 
-          // Transaction List
-          Expanded(
-            child: groupedTransactions.isEmpty
-                ? _buildEmptyState()
-                : RefreshIndicator(
-                    onRefresh: () async {
-                      setState(() {});
-                    },
-                    child: ListView.builder(
-                      itemCount: groupedTransactions.length,
-                      itemBuilder: (context, index) {
-                        final dateKey = groupedTransactions.keys.elementAt(
-                          index,
-                        );
-                        final transactions = groupedTransactions[dateKey]!;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
+            children: [
+              // Active filter chips
+              if (_hasActiveFilters)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            TransactionDateSection(
-                              dateLabel: dateKey,
-                              transactions: transactions,
-                            ),
-                            ...transactions.map((transaction) {
-                              return DismissibleTransactionItem(
-                                transaction: transaction,
-                                onDelete: _deleteTransaction,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          TransactionDetailsPage(
-                                            transaction: transaction,
-                                          ),
-                                    ),
-                                  ).then((_) {
-                                    // Refresh list when returning
-                                    setState(() {});
+                            if (_typeFilter != null)
+                              Chip(
+                                label: Text(
+                                  _typeFilter! ? 'Income' : 'Expense',
+                                ),
+                                deleteIcon: const Icon(Icons.close, size: 18),
+                                onDeleted: () {
+                                  setState(() {
+                                    _typeFilter = null;
                                   });
                                 },
-                              );
-                            }),
+                              ),
+                            if (_selectedCategory != null)
+                              Chip(
+                                label: Text(_selectedCategory!),
+                                deleteIcon: const Icon(Icons.close, size: 18),
+                                onDeleted: () {
+                                  setState(() {
+                                    _selectedCategory = null;
+                                  });
+                                },
+                              ),
                           ],
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _clearFilters,
+                        child: const Text('Clear All'),
+                      ),
+                    ],
                   ),
-          ),
-        ],
+                ),
+
+              // Transaction List
+              Expanded(
+                child: groupedTransactions.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: () async {
+                          setState(() {});
+                        },
+                        child: ListView.builder(
+                          itemCount: groupedTransactions.length,
+                          itemBuilder: (context, index) {
+                            final dateKey = groupedTransactions.keys.elementAt(
+                              index,
+                            );
+                            final transactions = groupedTransactions[dateKey]!;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TransactionDateSection(
+                                  dateLabel: dateKey,
+                                  transactions: transactions,
+                                ),
+                                ...transactions.map((transaction) {
+                                  return DismissibleTransactionItem(
+                                    transaction: transaction,
+                                    onDelete: _deleteTransaction,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              TransactionDetailsPage(
+                                                transaction: transaction,
+                                              ),
+                                        ),
+                                      ).then((_) {
+                                        // Refresh list when returning
+                                        setState(() {});
+                                      });
+                                    },
+                                  );
+                                }),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

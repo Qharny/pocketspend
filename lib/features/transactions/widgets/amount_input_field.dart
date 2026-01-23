@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/database/settings_database.dart';
 
 /// Large Amount Input Field Widget
 /// Auto-focused, numeric keyboard, optimized for quick entry
@@ -26,7 +27,7 @@ class AmountInputField extends StatelessWidget {
         children: [
           // Currency Label
           Text(
-            'GHS',
+            SettingsDatabase.getCurrency(),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               fontWeight: FontWeight.w500,

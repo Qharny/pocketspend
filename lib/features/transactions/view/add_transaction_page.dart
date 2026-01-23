@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../widgets/amount_input_field.dart';
 import '../widgets/transaction_type_toggle.dart';
 import '../widgets/category_selector.dart';
@@ -19,7 +21,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   final _noteController = TextEditingController();
 
   bool _isIncome = false; // Default to expense
-  String _selectedCategory = MockData.expenseCategories.first;
+  String _selectedCategory = TransactionDatabase.expenseCategories.first;
   DateTime _selectedDate = DateTime.now();
   bool _showNoteField = false;
 
@@ -35,12 +37,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     return amount > 0;
   }
 
-  void _saveTransaction() {
+  void _saveTransaction() async {
     if (!_isFormValid) return;
 
     final amount = double.parse(_amountController.text);
-    final transaction = MockTransaction(
-      id: MockData.generateId(),
+    final transaction = TransactionModel(
+      id: TransactionDatabase.generateId(),
       amount: amount,
       category: _selectedCategory,
       note: _noteController.text.isEmpty ? null : _noteController.text,
@@ -48,23 +50,26 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       isIncome: _isIncome,
     );
 
-    MockData.addTransaction(transaction);
+    await TransactionDatabase.addTransaction(transaction);
 
     // Show success feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isIncome
-              ? 'Income added: GHS ${amount.toStringAsFixed(2)}'
-              : 'Expense added: GHS ${amount.toStringAsFixed(2)}',
+    if (mounted) {
+      final currencySymbol = SettingsDatabase.getCurrencySymbol();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isIncome
+                ? 'Income added: $currencySymbol ${amount.toStringAsFixed(2)}'
+                : 'Expense added: $currencySymbol ${amount.toStringAsFixed(2)}',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
         ),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
 
-    // Close the screen
-    Navigator.pop(context, true); // Return true to indicate success
+      // Close the screen
+      Navigator.pop(context, true); // Return true to indicate success
+    }
   }
 
   void _toggleType(bool isIncome) {
@@ -72,8 +77,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _isIncome = isIncome;
       // Update default category when type changes
       _selectedCategory = isIncome
-          ? MockData.incomeCategories.first
-          : MockData.expenseCategories.first;
+          ? TransactionDatabase.incomeCategories.first
+          : TransactionDatabase.expenseCategories.first;
     });
   }
 

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// Transaction Date Section Widget
 /// Header for a group of transactions on the same date
 class TransactionDateSection extends StatelessWidget {
   final String dateLabel;
-  final List<MockTransaction> transactions;
+  final List<TransactionModel> transactions;
   final bool showTotal;
 
   const TransactionDateSection({
@@ -18,7 +19,9 @@ class TransactionDateSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = showTotal ? MockData.getGroupTotal(transactions) : null;
+    final total = showTotal
+        ? TransactionDatabase.getGroupTotal(transactions)
+        : null;
     final totalColor = total != null && total >= 0
         ? AppColors.getIncomeColor(context)
         : AppColors.getExpenseColor(context);

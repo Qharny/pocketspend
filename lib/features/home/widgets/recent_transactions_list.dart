@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
+import '../../../core/database/models/transaction_model.dart';
 import 'transaction_list_item.dart';
 import '../../transactions/view/transaction_details_page.dart';
 
 /// Recent Transactions List Widget
 /// Shows the most recent transactions with a "See All" option
 class RecentTransactionsList extends StatelessWidget {
-  final List<MockTransaction> transactions;
+  final List<TransactionModel> transactions;
   final VoidCallback? onSeeAll;
 
   const RecentTransactionsList({

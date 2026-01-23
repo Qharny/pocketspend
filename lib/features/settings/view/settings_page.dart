@@ -1,13 +1,30 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 /// Settings Page
 /// Light, simple settings - no bloat, offline-first
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late String _currentCurrency;
+  late ThemeMode _currentThemeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentCurrency = SettingsDatabase.getCurrency();
+    _currentThemeMode = SettingsDatabase.getThemeMode();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +35,20 @@ class SettingsPage extends StatelessWidget {
           // General Section
           _buildSectionHeader(context, 'General'),
           ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Theme'),
+            subtitle: Text(_currentThemeMode.name),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              _showThemePicker(context);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.attach_money),
             title: const Text('Currency'),
-            subtitle: const Text('GHS - Ghanaian Cedi'),
+            subtitle: Text(
+              '$_currentCurrency - ${SettingsDatabase.getCurrencyName()}',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               _showCurrencyPicker(context);
@@ -58,20 +86,29 @@ class SettingsPage extends StatelessWidget {
 
           // About Section
           _buildSectionHeader(context, 'About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Version'),
-            subtitle: Text('1.0.0'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Version'),
+            subtitle: const Text('1.0.0'),
+            onTap: () {
+              _showVersionInfo(context);
+            },
           ),
-          const ListTile(
-            leading: Icon(Icons.code),
-            title: Text('Pocket Spend'),
-            subtitle: Text('Offline-first expense tracker'),
+          ListTile(
+            leading: const Icon(Icons.code),
+            title: const Text('Pocket Spend'),
+            subtitle: const Text('Offline-first expense tracker'),
+            onTap: () {
+              _showAboutProject(context);
+            },
           ),
-          const ListTile(
-            leading: Icon(Icons.security),
-            title: Text('Privacy'),
-            subtitle: Text('No login. No cloud. No tracking.'),
+          ListTile(
+            leading: const Icon(Icons.security),
+            title: const Text('Privacy'),
+            subtitle: const Text('No login. No cloud. No tracking.'),
+            onTap: () {
+              _showPrivacyPolicy(context);
+            },
           ),
           const SizedBox(height: 24),
 
@@ -104,6 +141,46 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  void _showThemePicker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Theme'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _themeOption(context, ThemeMode.system, Icons.brightness_auto),
+            _themeOption(context, ThemeMode.light, Icons.light_mode_outlined),
+            _themeOption(context, ThemeMode.dark, Icons.dark_mode_outlined),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _themeOption(BuildContext context, ThemeMode mode, IconData icon) {
+    final isSelected = _currentThemeMode == mode;
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(mode.name),
+      selected: isSelected,
+      trailing: isSelected
+          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+          : null,
+      onTap: () async {
+        final navigator = Navigator.of(context);
+        await SettingsDatabase.setThemeMode(mode);
+        if (!mounted) return;
+
+        setState(() {
+          _currentThemeMode = mode;
+        });
+
+        navigator.pop();
+      },
+    );
+  }
+
   void _showCurrencyPicker(BuildContext context) {
     showDialog(
       context: context,
@@ -123,23 +200,127 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _currencyOption(BuildContext context, String code, String name) {
+    final isSelected = _currentCurrency == code;
     return ListTile(
       title: Text(code),
       subtitle: Text(name),
-      selected: code == 'GHS',
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Currency changed to $code')));
+      selected: isSelected,
+      trailing: isSelected
+          ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+          : null,
+      onTap: () async {
+        final navigator = Navigator.of(context);
+        final messenger = ScaffoldMessenger.of(context);
+
+        await SettingsDatabase.setCurrency(code);
+        if (!mounted) return;
+
+        setState(() {
+          _currentCurrency = code;
+        });
+
+        navigator.pop();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Currency changed to $code'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       },
+    );
+  }
+
+  void _showVersionInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('App Version'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Version: 1.0.0'),
+            Text('Build: 102'),
+            SizedBox(height: 16),
+            Text(
+              'Pocket Spend is built with Flutter and uses Hive for high-performance local storage.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutProject(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('About Pocket Spend'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pocket Spend started with a simple goal: money tracking shouldn\'t be hard.',
+            ),
+            SizedBox(height: 12),
+            Text(
+              'We believe your financial data should be private, offline, and friction-free. No accounts, no subscriptions, just you and your money.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Privacy First'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your data stays on your device.'),
+            SizedBox(height: 12),
+            BulletItem(text: 'No cloud sync (data never leaves your phone)'),
+            BulletItem(text: 'No analytics or tracking'),
+            BulletItem(text: 'No accounts or personal info requested'),
+            BulletItem(
+              text: 'You own your data (use Export to take it with you)',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
   void _exportData(BuildContext context) async {
     try {
+      // Get all transactions
+      final transactions = TransactionDatabase.getAllTransactions();
+
       // Generate CSV
-      final csv = _generateCSV(MockData.transactions);
+      final csv = _generateCSV(transactions);
 
       // Get temporary directory
       final directory = await getTemporaryDirectory();
@@ -159,9 +340,7 @@ class SettingsPage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${MockData.transactions.length} transactions ready to export',
-                ),
+                Text('${transactions.length} transactions ready to export'),
                 const SizedBox(height: 16),
                 Text(
                   'CSV Preview:',
@@ -201,7 +380,7 @@ class SettingsPage extends StatelessWidget {
                     [XFile(filePath)],
                     subject: 'Pocket Spend Transactions Export',
                     text:
-                        'Your transaction history (${MockData.transactions.length} transactions)',
+                        'Your transaction history (${transactions.length} transactions)',
                   );
 
                   // Show success message
@@ -233,7 +412,7 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
-  String _generateCSV(List<MockTransaction> transactions) {
+  String _generateCSV(List<TransactionModel> transactions) {
     final buffer = StringBuffer();
     buffer.writeln('Date,Type,Category,Amount,Note');
 
@@ -262,18 +441,46 @@ class SettingsPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              MockData.transactions.clear();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('All data cleared')));
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+
+              await TransactionDatabase.clearAll();
+
+              if (mounted) {
+                navigator.pop();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('All transactions deleted permanently'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: const Text('Delete Everything'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class BulletItem extends StatelessWidget {
+  final String text;
+  const BulletItem({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(text)),
         ],
       ),
     );

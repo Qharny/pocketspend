@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
-import '../data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 
 /// Transaction List Item Widget
 /// Displays individual transaction with icon, details, and amount
 class TransactionListItem extends StatelessWidget {
-  final MockTransaction transaction;
+  final TransactionModel transaction;
   final VoidCallback? onTap;
 
   const TransactionListItem({super.key, required this.transaction, this.onTap});
@@ -16,6 +18,7 @@ class TransactionListItem extends StatelessWidget {
     final amountColor = transaction.isIncome
         ? AppColors.getIncomeColor(context)
         : AppColors.getExpenseColor(context);
+    final currencySymbol = SettingsDatabase.getCurrencySymbol();
 
     return InkWell(
       onTap: onTap,
@@ -33,7 +36,7 @@ class TransactionListItem extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                MockData.getCategoryIcon(transaction.category),
+                TransactionDatabase.getCategoryIcon(transaction.category),
                 style: const TextStyle(fontSize: 24),
               ),
             ),
@@ -73,7 +76,7 @@ class TransactionListItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${transaction.isIncome ? '+' : '-'} GHS ${transaction.amount.toStringAsFixed(2)}',
+                  '${transaction.isIncome ? '+' : '-'} $currencySymbol ${transaction.amount.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: amountColor,
                     fontWeight: FontWeight.w600,

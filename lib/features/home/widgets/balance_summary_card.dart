@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/database/settings_database.dart';
 
 /// Balance Summary Card
 /// Displays total balance, income, and expenses in a prominent card
@@ -19,6 +20,7 @@ class BalanceSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currencySymbol = SettingsDatabase.getCurrencySymbol();
 
     return Card(
       elevation: isDark ? 4 : 2,
@@ -38,7 +40,7 @@ class BalanceSummaryCard extends StatelessWidget {
 
             // Balance Amount
             Text(
-              'GHS ${balance.toStringAsFixed(2)}',
+              '$currencySymbol ${balance.toStringAsFixed(2)}',
               style: AppTextStyles.displaySmall.copyWith(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -55,6 +57,7 @@ class BalanceSummaryCard extends StatelessWidget {
                     label: 'Income',
                     amount: income,
                     isIncome: true,
+                    currencySymbol: currencySymbol,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -65,6 +68,7 @@ class BalanceSummaryCard extends StatelessWidget {
                     label: 'Expenses',
                     amount: expenses,
                     isIncome: false,
+                    currencySymbol: currencySymbol,
                   ),
                 ),
               ],
@@ -81,11 +85,13 @@ class _BalanceItem extends StatelessWidget {
   final String label;
   final double amount;
   final bool isIncome;
+  final String currencySymbol;
 
   const _BalanceItem({
     required this.label,
     required this.amount,
     required this.isIncome,
+    required this.currencySymbol,
   });
 
   @override
@@ -115,7 +121,7 @@ class _BalanceItem extends StatelessWidget {
             ),
             Flexible(
               child: Text(
-                'GHS ${amount.toStringAsFixed(2)}',
+                '$currencySymbol ${amount.toStringAsFixed(2)}',
                 style: AppTextStyles.titleLarge.copyWith(
                   color: color,
                   fontWeight: FontWeight.w600,

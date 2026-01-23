@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../../home/widgets/period_toggle.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -15,70 +18,84 @@ class SummaryPage extends StatefulWidget {
 class _SummaryPageState extends State<SummaryPage> {
   Period _selectedPeriod = Period.thisMonth;
 
-  List<MockTransaction> get _filteredTransactions {
+  List<TransactionModel> get _filteredTransactions {
     switch (_selectedPeriod) {
       case Period.today:
-        return MockData.getToday();
+        return TransactionDatabase.getToday();
       case Period.thisWeek:
-        return MockData.getThisWeek();
+        return TransactionDatabase.getThisWeek();
       case Period.thisMonth:
-        return MockData.getThisMonth();
+        return TransactionDatabase.getThisMonth();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final transactions = _filteredTransactions;
-    final totalIncome = MockData.getTotalIncome(transactions);
-    final totalExpense = MockData.getTotalExpenses(transactions);
-    final netBalance = totalIncome - totalExpense;
-    final expensesByCategory = MockData.getExpensesByCategory(transactions);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Summary')),
-      body: transactions.isEmpty
-          ? _buildEmptyState()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Period Toggle
-                  PeriodToggle(
-                    selectedPeriod: _selectedPeriod,
-                    onPeriodChanged: (period) {
-                      setState(() {
-                        _selectedPeriod = period;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 24),
+      body: ValueListenableBuilder<Box<TransactionModel>>(
+        valueListenable: TransactionDatabase.box.listenable(),
+        builder: (context, box, child) {
+          final transactions = _filteredTransactions;
+          final totalIncome = TransactionDatabase.getTotalIncome(transactions);
+          final totalExpense = TransactionDatabase.getTotalExpenses(
+            transactions,
+          );
+          final netBalance = totalIncome - totalExpense;
+          final expensesByCategory = TransactionDatabase.getExpensesByCategory(
+            transactions,
+          );
+          final currencySymbol = SettingsDatabase.getCurrencySymbol();
 
-                  // Summary Stats
-                  _SummaryStatsCard(
-                    income: totalIncome,
-                    expense: totalExpense,
-                    balance: netBalance,
-                  ),
-                  const SizedBox(height: 24),
+          if (transactions.isEmpty) {
+            return _buildEmptyState();
+          }
 
-                  // Category Breakdown
-                  if (expensesByCategory.isNotEmpty) ...[
-                    Text(
-                      'Expense Breakdown',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Period Toggle
+                PeriodToggle(
+                  selectedPeriod: _selectedPeriod,
+                  onPeriodChanged: (period) {
+                    setState(() {
+                      _selectedPeriod = period;
+                    });
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Summary Stats
+                _SummaryStatsCard(
+                  income: totalIncome,
+                  expense: totalExpense,
+                  balance: netBalance,
+                  currencySymbol: currencySymbol,
+                ),
+                const SizedBox(height: 24),
+
+                // Category Breakdown
+                if (expensesByCategory.isNotEmpty) ...[
+                  Text(
+                    'Expense Breakdown',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 16),
-                    _CategoryBreakdownChart(
-                      expensesByCategory: expensesByCategory,
-                      totalExpense: totalExpense,
-                    ),
-                  ],
+                  ),
+                  const SizedBox(height: 16),
+                  _CategoryBreakdownChart(
+                    expensesByCategory: expensesByCategory,
+                    totalExpense: totalExpense,
+                    currencySymbol: currencySymbol,
+                  ),
                 ],
-              ),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 
@@ -121,11 +138,13 @@ class _SummaryStatsCard extends StatelessWidget {
   final double income;
   final double expense;
   final double balance;
+  final String currencySymbol;
 
   const _SummaryStatsCard({
     required this.income,
     required this.expense,
     required this.balance,
+    required this.currencySymbol,
   });
 
   @override
@@ -148,7 +167,7 @@ class _SummaryStatsCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${balance >= 0 ? '+' : ''}GHS ${balance.abs().toStringAsFixed(2)}',
+              '${balance >= 0 ? '+' : ''}$currencySymbol ${balance.abs().toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                 color: balanceColor,
                 fontWeight: FontWeight.bold,
@@ -165,6 +184,7 @@ class _SummaryStatsCard extends StatelessWidget {
                     amount: income,
                     color: AppColors.getIncomeColor(context),
                     icon: Icons.arrow_downward,
+                    currencySymbol: currencySymbol,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -174,6 +194,7 @@ class _SummaryStatsCard extends StatelessWidget {
                     amount: expense,
                     color: AppColors.getExpenseColor(context),
                     icon: Icons.arrow_upward,
+                    currencySymbol: currencySymbol,
                   ),
                 ),
               ],
@@ -190,12 +211,14 @@ class _StatItem extends StatelessWidget {
   final double amount;
   final Color color;
   final IconData icon;
+  final String currencySymbol;
 
   const _StatItem({
     required this.label,
     required this.amount,
     required this.color,
     required this.icon,
+    required this.currencySymbol,
   });
 
   @override
@@ -217,7 +240,7 @@ class _StatItem extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'GHS ${amount.toStringAsFixed(2)}',
+          '$currencySymbol ${amount.toStringAsFixed(2)}',
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -231,10 +254,12 @@ class _StatItem extends StatelessWidget {
 class _CategoryBreakdownChart extends StatelessWidget {
   final Map<String, double> expensesByCategory;
   final double totalExpense;
+  final String currencySymbol;
 
   const _CategoryBreakdownChart({
     required this.expensesByCategory,
     required this.totalExpense,
+    required this.currencySymbol,
   });
 
   @override
@@ -254,6 +279,7 @@ class _CategoryBreakdownChart extends StatelessWidget {
                 amount: entry.value,
                 percentage: percentage,
                 maxAmount: topCategories.first.value,
+                currencySymbol: currencySymbol,
               ),
             );
           }).toList(),
@@ -268,12 +294,14 @@ class _CategoryBar extends StatelessWidget {
   final double amount;
   final double percentage;
   final double maxAmount;
+  final String currencySymbol;
 
   const _CategoryBar({
     required this.category,
     required this.amount,
     required this.percentage,
     required this.maxAmount,
+    required this.currencySymbol,
   });
 
   Color _getCategoryColor(BuildContext context, int index) {
@@ -303,7 +331,7 @@ class _CategoryBar extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  MockData.getCategoryIcon(category),
+                  TransactionDatabase.getCategoryIcon(category),
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(width: 8),
@@ -316,7 +344,7 @@ class _CategoryBar extends StatelessWidget {
               ],
             ),
             Text(
-              '${percentage.toStringAsFixed(1)}% • GHS ${amount.toStringAsFixed(2)}',
+              '${percentage.toStringAsFixed(1)}% • $currencySymbol ${amount.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),

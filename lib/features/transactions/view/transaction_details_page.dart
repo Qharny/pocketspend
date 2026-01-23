@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
 /// Transaction Details Page
 /// Shows detailed information about a single transaction
 class TransactionDetailsPage extends StatelessWidget {
-  final MockTransaction transaction;
+  final TransactionModel transaction;
 
   const TransactionDetailsPage({super.key, required this.transaction});
 
@@ -15,6 +17,7 @@ class TransactionDetailsPage extends StatelessWidget {
     final amountColor = transaction.isIncome
         ? AppColors.getIncomeColor(context)
         : AppColors.getExpenseColor(context);
+    final currencySymbol = SettingsDatabase.getCurrencySymbol();
 
     return Scaffold(
       appBar: AppBar(
@@ -55,7 +58,7 @@ class TransactionDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${transaction.isIncome ? '+' : '-'}GHS ${transaction.amount.toStringAsFixed(2)}',
+                    '${transaction.isIncome ? '+' : '-'}$currencySymbol ${transaction.amount.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.displayMedium?.copyWith(
                       color: amountColor,
                       fontWeight: FontWeight.bold,
@@ -86,7 +89,9 @@ class TransactionDetailsPage extends StatelessWidget {
                     icon: Icons.category_outlined,
                     label: 'Category',
                     value: transaction.category,
-                    emoji: MockData.getCategoryIcon(transaction.category),
+                    emoji: TransactionDatabase.getCategoryIcon(
+                      transaction.category,
+                    ),
                   ),
 
                   const Divider(height: 32),
@@ -195,12 +200,13 @@ class TransactionDetailsPage extends StatelessWidget {
   }
 
   void _deleteTransaction(BuildContext context) {
+    final currencySymbol = SettingsDatabase.getCurrencySymbol();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Transaction'),
         content: Text(
-          'Are you sure you want to delete this ${transaction.isIncome ? 'income' : 'expense'} of GHS ${transaction.amount.toStringAsFixed(2)}?',
+          'Are you sure you want to delete this ${transaction.isIncome ? 'income' : 'expense'} of $currencySymbol ${transaction.amount.toStringAsFixed(2)}?',
         ),
         actions: [
           TextButton(
@@ -208,24 +214,28 @@ class TransactionDetailsPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              final deleted = MockData.deleteTransaction(transaction.id);
+            onPressed: () async {
+              final deleted = await TransactionDatabase.deleteTransaction(
+                transaction.id,
+              );
               if (deleted) {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close details page
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${transaction.isIncome ? 'Income' : 'Expense'} deleted',
+                if (context.mounted) {
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pop(context); // Close details page
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${transaction.isIncome ? 'Income' : 'Expense'} deleted',
+                      ),
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () async {
+                          await TransactionDatabase.addTransaction(transaction);
+                        },
+                      ),
                     ),
-                    action: SnackBarAction(
-                      label: 'Undo',
-                      onPressed: () {
-                        MockData.addTransaction(transaction);
-                      },
-                    ),
-                  ),
-                );
+                  );
+                }
               }
             },
             style: FilledButton.styleFrom(

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/transaction_database.dart';
 
 /// Category Selector Widget
 /// Shows current category, opens bottom sheet to select new category
@@ -33,7 +33,7 @@ class CategorySelector extends StatelessWidget {
           children: [
             // Category Icon
             Text(
-              MockData.getCategoryIcon(selectedCategory),
+              TransactionDatabase.getCategoryIcon(selectedCategory),
               style: const TextStyle(fontSize: 28),
             ),
             const SizedBox(width: 16),
@@ -61,8 +61,8 @@ class CategorySelector extends StatelessWidget {
 
   void _showCategoryPicker(BuildContext context) {
     final categories = isIncome
-        ? MockData.incomeCategories
-        : MockData.expenseCategories;
+        ? TransactionDatabase.incomeCategories
+        : TransactionDatabase.expenseCategories;
 
     showModalBottomSheet(
       context: context,
@@ -99,7 +99,7 @@ class CategorySelector extends StatelessWidget {
 
                   return ListTile(
                     leading: Text(
-                      MockData.getCategoryIcon(category),
+                      TransactionDatabase.getCategoryIcon(category),
                       style: const TextStyle(fontSize: 28),
                     ),
                     title: Text(

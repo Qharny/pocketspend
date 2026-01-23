@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../core/database/settings_database.dart';
+import '../../../core/database/transaction_database.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../widgets/balance_summary_card.dart';
 import '../widgets/period_toggle.dart';
 import '../widgets/expense_breakdown_chart.dart';
@@ -20,124 +23,148 @@ class _HomePageState extends State<HomePage> {
   Period _selectedPeriod = Period.thisMonth;
 
   // Get transactions based on selected period
-  List<MockTransaction> _getFilteredTransactions() {
+  List<TransactionModel> _getFilteredTransactions() {
     switch (_selectedPeriod) {
       case Period.today:
-        return MockData.getToday();
+        return TransactionDatabase.getToday();
       case Period.thisWeek:
-        return MockData.getThisWeek();
+        return TransactionDatabase.getThisWeek();
       case Period.thisMonth:
-        return MockData.getThisMonth();
+        return TransactionDatabase.getThisMonth();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final transactions = _getFilteredTransactions();
-    final balance = MockData.getBalance(transactions);
-    final income = MockData.getTotalIncome(transactions);
-    final expenses = MockData.getTotalExpenses(transactions);
-    final expensesByCategory = MockData.getExpensesByCategory(transactions);
-    final recentTransactions = MockData.getRecentTransactions(limit: 8);
+    return ValueListenableBuilder<Box<TransactionModel>>(
+      valueListenable: TransactionDatabase.box.listenable(),
+      builder: (context, box, child) {
+        final transactions = _getFilteredTransactions();
+        final balance = TransactionDatabase.getBalance(transactions);
+        final income = TransactionDatabase.getTotalIncome(transactions);
+        final expenses = TransactionDatabase.getTotalExpenses(transactions);
+        final expensesByCategory = TransactionDatabase.getExpensesByCategory(
+          transactions,
+        );
+        final recentTransactions = TransactionDatabase.getRecentTransactions(
+          limit: 8,
+        );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pocket Spend'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notifications feature coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            tooltip: 'Notifications',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              AppRoutes.push(context, AppRoutes.settings);
-            },
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // TODO: Refresh data from database
-          setState(() {});
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-
-              // Balance Summary Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: BalanceSummaryCard(
-                  balance: balance,
-                  income: income,
-                  expenses: expenses,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Period Toggle
-              PeriodToggle(
-                selectedPeriod: _selectedPeriod,
-                onPeriodChanged: (period) {
-                  setState(() {
-                    _selectedPeriod = period;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Expense Breakdown Chart
-              ExpenseBreakdownChart(expensesByCategory: expensesByCategory),
-              const SizedBox(height: 24),
-
-              // Recent Transactions List
-              RecentTransactionsList(
-                transactions: recentTransactions,
-                onSeeAll: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TransactionsPage(),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Pocket Spend'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notifications feature coming soon!'),
+                      duration: Duration(seconds: 2),
                     ),
-                  ).then((_) {
-                    // Refresh when returning from transactions page
-                    setState(() {});
-                  });
+                  );
+                },
+                tooltip: 'Notifications',
+              ),
+              ValueListenableBuilder<ThemeMode>(
+                valueListenable: SettingsDatabase.themeNotifier,
+                builder: (context, mode, child) {
+                  final isDark =
+                      mode == ThemeMode.dark ||
+                      (mode == ThemeMode.system &&
+                          MediaQuery.of(context).platformBrightness ==
+                              Brightness.dark);
+
+                  return IconButton(
+                    icon: Icon(
+                      isDark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                    ),
+                    onPressed: () {
+                      final newMode = isDark ? ThemeMode.light : ThemeMode.dark;
+                      SettingsDatabase.setThemeMode(newMode);
+                    },
+                    tooltip: 'Toggle Theme',
+                  );
                 },
               ),
-              const SizedBox(height: 80), // Space for FAB
             ],
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await AppRoutes.push(
-            context,
-            AppRoutes.addTransaction,
-          );
-          // Refresh the homepage if a transaction was added
-          if (result == true && mounted) {
-            setState(() {});
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Transaction'),
-        tooltip: 'Add new transaction',
-      ),
+          body: RefreshIndicator(
+            onRefresh: () async {
+              setState(() {});
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+
+                  // Balance Summary Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: BalanceSummaryCard(
+                      balance: balance,
+                      income: income,
+                      expenses: expenses,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Period Toggle
+                  PeriodToggle(
+                    selectedPeriod: _selectedPeriod,
+                    onPeriodChanged: (period) {
+                      setState(() {
+                        _selectedPeriod = period;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Expense Breakdown Chart
+                  ExpenseBreakdownChart(expensesByCategory: expensesByCategory),
+                  const SizedBox(height: 24),
+
+                  // Recent Transactions List
+                  RecentTransactionsList(
+                    transactions: recentTransactions,
+                    onSeeAll: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TransactionsPage(),
+                        ),
+                      ).then((_) {
+                        // Refresh when returning from transactions page
+                        setState(() {});
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 80), // Space for FAB
+                ],
+              ),
+            ),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () async {
+              final result = await AppRoutes.push(
+                context,
+                AppRoutes.addTransaction,
+              );
+              // Refresh the homepage if a transaction was added
+              if (result == true && mounted) {
+                setState(() {});
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Transaction'),
+            tooltip: 'Add new transaction',
+          ),
+        );
+      },
     );
   }
 }

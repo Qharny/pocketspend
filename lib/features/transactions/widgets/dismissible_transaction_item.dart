@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../home/data/mock_data.dart';
+import '../../../core/database/models/transaction_model.dart';
 import '../../home/widgets/transaction_list_item.dart';
 
 /// Dismissible Transaction Item Widget
 /// Wraps TransactionListItem with swipe-to-delete functionality
 class DismissibleTransactionItem extends StatelessWidget {
-  final MockTransaction transaction;
+  final TransactionModel transaction;
   final VoidCallback? onTap;
-  final Function(MockTransaction)? onDelete;
+  final Function(TransactionModel)? onDelete;
 
   const DismissibleTransactionItem({
     super.key,
