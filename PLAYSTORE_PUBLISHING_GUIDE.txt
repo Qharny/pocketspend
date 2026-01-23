@@ -1,0 +1,66 @@
+Flutter Play Store Publishing Guide - PocketSpend
+==============================================
+
+This guide outlines the steps required to prepare, build, and publish your Flutter application to the Google Play Store.
+
+1. App Preparation
+------------------
+*   Review Package Name: Ensure your package name (e.g., com.qharny.pocketspend) is unique and correct in `android/app/build.gradle`.
+*   Update App Icon: Use a tool like `flutter_launcher_icons` to generate icons for all resolutions.
+*   Update App Name: Check the label in `android/app/src/main/AndroidManifest.xml`.
+
+2. Create an Upload Keystore
+----------------------------
+You need a digital signature to sign your app.
+*   Run the following command in your terminal (macOS/Linux):
+    keytool -genkey -v -keystore ~/upload-keystore.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias upload
+*   On Windows:
+    keytool -genkey -v -keystore %USERPROFILE%\upload-keystore.jks ^
+            -keyalg RSA -keysize 2048 -validity 10000 ^
+            -alias upload
+
+*Ref: Keep your keystore file and password safe! You will need them for every update.*
+
+3. Configure Signing in Gradle
+------------------------------
+*   Create a file `android/key.properties` (DO NOT commit this to version control).
+*   Add the following content:
+    storePassword=<your-password>
+    keyPassword=<your-password>
+    keyAlias=upload
+    storeFile=<path-to-keystore-file>
+*   Update `android/app/build.gradle` to reference these properties in the `signingConfigs` and `buildTypes` sections.
+
+4. Build the App Bundle (AAB)
+-----------------------------
+The App Bundle is the recommended format for Google Play.
+*   Run the command:
+    flutter build appbundle --release
+*   The output file will be located at:
+    `build/app/outputs/bundle/release/app-release.aab`
+
+5. Google Play Console Setup
+----------------------------
+*   Go to: https://play.google.com/console
+*   Create a Developer Account (requires a one-time $25 fee).
+*   Create a New App: Fill in the mandatory details (title, language, app type).
+*   Set up App Content: Complete all required declarations (Privacy Policy, Ads, Content Rating, etc.).
+
+6. Upload and Review
+--------------------
+*   Navigate to 'Production' in the sidebar.
+*   Create a New Release.
+*   Upload the `.aab` file created in Step 4.
+*   Enter Release Notes.
+*   Save, Review, and Roll out to Production.
+
+7. Post-Publishing
+------------------
+*   Google will review your app (typically takes 1-7 days for first-time apps).
+*   Once approved, your app will be live on the Play Store!
+
+==============================================
+For detailed documentation, visit:
+https://docs.flutter.dev/deployment/android
