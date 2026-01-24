@@ -21,7 +21,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.pocketspend"
+    namespace = "kabuteyy.pocketspend"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
